@@ -1,5 +1,6 @@
 package com.panda.rpc.server;
 
+import com.panda.rpc.registry.ServiceRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,13 +16,17 @@ import java.util.concurrent.*;
  */
 public class RpcServer {
 
+    public static final int CORE_POOL_SIZE = 5;
+    public static final int MAXIMUM_POOL_SIZE = 50;
+    public static final long KEEP_ALIVE_TIME = 60;
     private final ExecutorService threadPool;
     private static final Logger logger = LoggerFactory.getLogger(RpcServer.class);
+    private final ServiceRegistry serviceRegistry;
+    private RequestHandler requestHandler = new RequestHandler();
 
-    public RpcServer(){
-        int corePoolSize = 5;
-        int maximumPoolSize = 50;
-        long keepAliveTime = 60;
+    public RpcServer(ServiceRegistry serviceRegistry) {
+
+        this.serviceRegistry = serviceRegistry;
 
         /**
          * 设置上限为100个线程的阻塞队列
@@ -32,25 +37,24 @@ public class RpcServer {
         /**
          * 创建线程池实例
          */
-        threadPool = new ThreadPoolExecutor(corePoolSize, maximumPoolSize, keepAliveTime, TimeUnit.SECONDS, workingQueue, threadFactory);
+        threadPool = new ThreadPoolExecutor(CORE_POOL_SIZE, MAXIMUM_POOL_SIZE, KEEP_ALIVE_TIME, TimeUnit.SECONDS, workingQueue, threadFactory);
     }
 
+
     /**
-     * @description 服务注册
-     * @param [service, port]
-     * @return [void]
-     * @date [2021-02-05 11:57]
+     * @param port
      */
-    public void register(Object service, int port){
-        try(ServerSocket serverSocket = new ServerSocket(port)){
+    public void start(int port) {
+        try (ServerSocket serverSocket = new ServerSocket(port)) {
             logger.info("服务器正在启动……");
             Socket socket;
             //当未接收到连接请求时，accept()会一直阻塞
-            while ((socket = serverSocket.accept()) != null){
+            while ((socket = serverSocket.accept()) != null) {
                 logger.info("客户端连接！IP：" + socket.getInetAddress() + ":" + socket.getPort());
-                threadPool.execute(new RequestHandler(socket, service));
+                threadPool.execute(new RequestHandlerThread(socket, requestHandler, serviceRegistry));
             }
-        }catch (IOException e){
+            threadPool.shutdown();
+        } catch (IOException e) {
             logger.info("连接时有错误发生：" + e);
         }
     }
