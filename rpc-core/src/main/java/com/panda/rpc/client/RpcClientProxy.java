@@ -1,6 +1,8 @@
 package com.panda.rpc.client;
 
+import com.panda.rpc.RpcClient;
 import com.panda.rpc.entity.RpcRequest;
+import com.panda.rpc.socket.client.SocketRpcClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,12 +18,10 @@ import java.lang.reflect.Proxy;
 public class RpcClientProxy implements InvocationHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(RpcClientProxy.class);
-    private String host;
-    private int port;
+    private RpcClient rpcClient;
 
-    public RpcClientProxy(String host, int port){
-        this.host = host;
-        this.port = port;
+    public RpcClientProxy(RpcClient rpcClient){
+        this.rpcClient = rpcClient;
     }
 
     //抑制编译器产生警告信息
@@ -42,7 +42,7 @@ public class RpcClientProxy implements InvocationHandler {
                 .paramTypes(method.getParameterTypes())
                 .build();
         //进行远程调用的客户端
-        RpcClient rpcClient = new RpcClient();
-        return rpcClient.sendRequest(rpcRequest, host, port);
+        RpcClient client = rpcClient;
+        return client.sendRequest(rpcRequest);
     }
 }

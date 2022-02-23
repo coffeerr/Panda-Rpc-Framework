@@ -1,9 +1,11 @@
 package com.panda.rpc.test;
 
+import com.panda.rpc.RpcServer;
 import com.panda.rpc.api.HelloService;
+import com.panda.rpc.netty.server.NettyServer;
 import com.panda.rpc.registry.DefaultServiceRegistry;
 import com.panda.rpc.registry.ServiceRegistry;
-import com.panda.rpc.server.RpcServer;
+import com.panda.rpc.socket.server.SocketRpcServer;
 
 /**
  * @author [PANDA] 1843047930@qq.com
@@ -16,7 +18,7 @@ public class TestServer {
         HelloService helloService = new HelloServiceImpl();
         ServiceRegistry serviceRegistry = new DefaultServiceRegistry();
         serviceRegistry.register(helloService);
-        RpcServer rpcServer = new RpcServer(serviceRegistry);
+        RpcServer rpcServer = new NettyServer();
         rpcServer.start(9000);
     }
 }

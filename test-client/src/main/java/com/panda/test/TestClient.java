@@ -1,8 +1,10 @@
 package com.panda.test;
 
+import com.panda.rpc.RpcClient;
 import com.panda.rpc.api.HelloObject;
 import com.panda.rpc.api.HelloService;
 import com.panda.rpc.client.RpcClientProxy;
+import com.panda.rpc.netty.client.NettyClient;
 
 /**
  * @author [PANDA] 1843047930@qq.com
@@ -13,7 +15,10 @@ public class TestClient {
 
     public static void main(String[] args) {
         //接口与代理对象之间的中介对象
-        RpcClientProxy proxy = new RpcClientProxy("127.0.0.1", 9000);
+//        RpcClientProxy proxy = new RpcClientProxy("127.0.0.1", 9000);
+
+        RpcClient rpcClient = new NettyClient("127.0.0.1", 9000);
+        RpcClientProxy proxy = new RpcClientProxy(rpcClient);
         //创建代理对象
         HelloService helloService = proxy.getProxy(HelloService.class);
         //接口方法的参数对象
