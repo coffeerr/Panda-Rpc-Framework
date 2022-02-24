@@ -8,6 +8,7 @@ import com.panda.rpc.enumeration.SerializeCode;
 import com.panda.rpc.exception.RpcException;
 import com.panda.rpc.serializer.CommonSerializer;
 import com.panda.rpc.serializer.JsonSerializer;
+import com.panda.rpc.serializer.KryoSerializer;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ReplayingDecoder;
@@ -53,6 +54,8 @@ public class CommonDecoder extends ReplayingDecoder {
         int serializeCode = byteBuf.readInt();
         if (serializeCode == SerializeCode.JSON.getCode()) {
             commonSerializer = new JsonSerializer();
+        } else if (serializeCode == SerializeCode.KRYO.getCode()) {
+            commonSerializer = new KryoSerializer();
         } else {
             logger.error("解码时发生错误");
             throw new RpcException(RpcError.SERIALIZER_TYPE_ERROT);
