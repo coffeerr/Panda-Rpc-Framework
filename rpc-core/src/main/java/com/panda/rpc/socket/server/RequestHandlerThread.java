@@ -4,6 +4,9 @@ import com.panda.rpc.RequestHandler;
 import com.panda.rpc.entity.RpcRequest;
 import com.panda.rpc.entity.RpcResponse;
 import com.panda.rpc.registry.ServiceRegistry;
+import com.panda.rpc.serializer.KryoSerializer;
+import com.panda.rpc.socket.ObjectReader;
+import com.panda.rpc.socket.ObjectWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,6 +27,7 @@ public class RequestHandlerThread implements Runnable {
     private Socket socket;
     private RequestHandler requestHandler;
     private ServiceRegistry serviceRegistry;
+
     public RequestHandlerThread(Socket socket, RequestHandler requestHandler, ServiceRegistry serviceRegistry) {
         this.socket = socket;
         this.requestHandler = requestHandler;
@@ -32,15 +36,14 @@ public class RequestHandlerThread implements Runnable {
 
     @Override
     public void run() {
-        try(ObjectInputStream objectInputStream = new ObjectInputStream(socket.getInputStream());
-            ObjectOutputStream objectOutputStream = new ObjectOutputStream(socket.getOutputStream())) {
-            RpcRequest rpcRequest = (RpcRequest)objectInputStream.readObject();
+        try (ObjectInputStream objectInputStream = new ObjectInputStream(socket.getInputStream());
+             ObjectOutputStream objectOutputStream = new ObjectOutputStream(socket.getOutputStream())) {
+            RpcRequest rpcRequest = (RpcRequest) ObjectReader.readObject(objectInputStream);
             String interfaceName = rpcRequest.getInterfaceName();
             Object service = serviceRegistry.getService(interfaceName);
             Object result = requestHandler.handle(rpcRequest, service);
-            objectOutputStream.writeObject(RpcResponse.success(result));
-            objectOutputStream.flush();
-        }catch (IOException | ClassNotFoundException e){
+            ObjectWriter.writeObject(objectOutputStream, RpcResponse.success(result), new KryoSerializer());
+        } catch (IOException e) {
             logger.info("调用或发送时发生错误：" + e);
         }
     }

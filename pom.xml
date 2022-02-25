@@ -24,6 +24,7 @@
         <maven.compiler.target>1.8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <netty-version>4.1.50.Final</netty-version>
+        <guava.version>29.0-jre</guava.version>
     </properties>
 
     <dependencies>
@@ -51,6 +52,14 @@
             <artifactId>kryo</artifactId>
             <version>4.0.2</version>
         </dependency>
+
+        <!-- https://mvnrepository.com/artifact/com.caucho/hessian -->
+        <dependency>
+            <groupId>com.caucho</groupId>
+            <artifactId>hessian</artifactId>
+            <version>4.0.63</version>
+        </dependency>
+
     </dependencies>
 
 </project>

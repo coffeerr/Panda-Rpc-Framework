@@ -11,7 +11,6 @@ import com.panda.rpc.socket.server.SocketServer;
  * @description 测试用服务端
  */
 public class SocketTestServer {
-
     public static void main(String[] args) {
         HelloService helloService = new HelloServiceImpl();
         ServiceRegistry serviceRegistry = new DefaultServiceRegistry();

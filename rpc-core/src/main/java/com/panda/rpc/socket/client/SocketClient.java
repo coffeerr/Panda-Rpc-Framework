@@ -6,6 +6,9 @@ import com.panda.rpc.entity.RpcResponse;
 import com.panda.rpc.enumeration.ResponseCode;
 import com.panda.rpc.enumeration.RpcError;
 import com.panda.rpc.exception.RpcException;
+import com.panda.rpc.serializer.KryoSerializer;
+import com.panda.rpc.socket.ObjectReader;
+import com.panda.rpc.socket.ObjectWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,13 +29,13 @@ public class SocketClient implements RpcClient {
     private final String host;
     private final int port;
 
-    public SocketClient(String host, int port){
+    public SocketClient(String host, int port) {
         this.host = host;
         this.port = port;
     }
 
     @Override
-    public Object sendRequest(RpcRequest rpcRequest){
+    public Object sendRequest(RpcRequest rpcRequest) {
         /**
          * socket套接字实现TCP网络传输
          * try()中一般放对资源的申请，若{}出现异常，()资源会自动关闭
@@ -40,19 +43,19 @@ public class SocketClient implements RpcClient {
         try (Socket socket = new Socket(host, port)) {
             ObjectOutputStream objectOutputStream = new ObjectOutputStream(socket.getOutputStream());
             ObjectInputStream objectInputStream = new ObjectInputStream(socket.getInputStream());
-            objectOutputStream.writeObject(rpcRequest);
-            objectOutputStream.flush();
-            RpcResponse rpcResponse = (RpcResponse)objectInputStream.readObject();
-            if(rpcResponse == null){
+            ObjectWriter.writeObject(objectOutputStream, rpcRequest, new KryoSerializer());
+            RpcResponse rpcResponse = (RpcResponse) ObjectReader.readObject(objectInputStream);
+
+            if (rpcResponse == null) {
                 logger.error("服务调用失败，service:{}" + rpcRequest.getInterfaceName());
                 throw new RpcException(RpcError.SERVICE_INVOCATION_FAILURE, "service:" + rpcRequest.getInterfaceName());
             }
-            if(rpcResponse.getStatusCode() == null || rpcResponse.getStatusCode() != ResponseCode.SUCCESS.getCode()){
+            if (rpcResponse.getStatusCode() == null || rpcResponse.getStatusCode() != ResponseCode.SUCCESS.getCode()) {
                 logger.error("服务调用失败，service:{} response:{}", rpcRequest.getInterfaceName(), rpcResponse);
                 throw new RpcException(RpcError.SERVICE_INVOCATION_FAILURE, "service:" + rpcRequest.getInterfaceName());
             }
             return rpcResponse.getData();
-        } catch (IOException | ClassNotFoundException e) {
+        } catch (IOException e) {
             logger.error("调用时有错误发生：" + e);
             throw new RpcException("服务调用失败：", e);
         }
