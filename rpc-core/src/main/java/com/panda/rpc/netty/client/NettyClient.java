@@ -5,6 +5,9 @@ import com.panda.rpc.codec.CommonDecoder;
 import com.panda.rpc.codec.CommonEncoder;
 import com.panda.rpc.entity.RpcRequest;
 import com.panda.rpc.entity.RpcResponse;
+import com.panda.rpc.enumeration.RpcError;
+import com.panda.rpc.exception.RpcException;
+import com.panda.rpc.serializer.CommonSerializer;
 import com.panda.rpc.serializer.HessianSerializer;
 import com.panda.rpc.serializer.JsonSerializer;
 import com.panda.rpc.serializer.KryoSerializer;
@@ -21,6 +24,9 @@ import io.netty.util.ReferenceCountUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.InetSocketAddress;
+import java.util.concurrent.atomic.AtomicReference;
+
 /**
  * @description:
  * @author: Desmand
@@ -31,35 +37,27 @@ public class NettyClient implements RpcClient {
     private final Logger logger = LoggerFactory.getLogger(NettyClient.class);
     private String host;
     private int port;
-    private static final Bootstrap bootstrap;
+    private CommonSerializer serializer;
 
     public NettyClient(String host, int port) {
         this.host = host;
         this.port = port;
     }
 
-    static {
-        NioEventLoopGroup eventExecutors = new NioEventLoopGroup();
-        bootstrap = new Bootstrap();
-
-        bootstrap.group(eventExecutors)
-                .channel(NioSocketChannel.class)
-                .option(ChannelOption.SO_KEEPALIVE, true)
-                .handler(new ChannelInitializer<SocketChannel>() {
-                    @Override
-                    protected void initChannel(SocketChannel ch) throws Exception {
-                        ch.pipeline().addLast(new CommonDecoder())
-                                .addLast(new CommonEncoder(new HessianSerializer()))
-                                .addLast(new NettyClientHandler());
-                    }
-                });
-    }
 
     @Override
     public Object sendRequest(RpcRequest rpcRequest) {
+
+        if (serializer == null) {
+            logger.error("未设置序列化器");
+            throw new RpcException(RpcError.SERIALIZER_NOT_FOUND);
+        }
+
+        //保证自定义实体类变量的原子性和共享性的线程安全，此处应用于rpcResponse
+        AtomicReference<Object> result = new AtomicReference<>(null);
+
         try {
-            ChannelFuture sync = bootstrap.connect(host, port).sync();
-            Channel channel = sync.channel();
+            Channel channel = ChannelProvider.get(new InetSocketAddress(host, port), serializer);
             if (channel != null) {
                 channel.writeAndFlush(rpcRequest).addListener(future1 -> {
                     if (future1.isSuccess()) {
@@ -70,15 +68,22 @@ public class NettyClient implements RpcClient {
                 });
                 channel.closeFuture().sync();
             }
+            channel.closeFuture().sync();
             AttributeKey<RpcResponse> key = AttributeKey.valueOf("rpcResponse");
-            RpcResponse rpcResponse = sync.channel().attr(key).get();
-            RpcMessageChecker.check(rpcRequest,rpcResponse);
+            RpcResponse rpcResponse = channel.attr(key).get();
+            RpcMessageChecker.check(rpcRequest, rpcResponse);
+            result.set(rpcResponse.getData());
             return rpcResponse.getData();
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-        return null;
+        return result.get();
 
 
+    }
+
+    @Override
+    public void setSerializer(CommonSerializer serializer) {
+        this.serializer = serializer;
     }
 }

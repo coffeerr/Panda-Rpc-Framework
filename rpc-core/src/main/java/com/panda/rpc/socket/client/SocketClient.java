@@ -6,6 +6,7 @@ import com.panda.rpc.entity.RpcResponse;
 import com.panda.rpc.enumeration.ResponseCode;
 import com.panda.rpc.enumeration.RpcError;
 import com.panda.rpc.exception.RpcException;
+import com.panda.rpc.serializer.CommonSerializer;
 import com.panda.rpc.serializer.KryoSerializer;
 import com.panda.rpc.socket.ObjectReader;
 import com.panda.rpc.socket.ObjectWriter;
@@ -29,6 +30,7 @@ public class SocketClient implements RpcClient {
 
     private final String host;
     private final int port;
+    private CommonSerializer serializer;
 
     public SocketClient(String host, int port) {
         this.host = host;
@@ -46,11 +48,16 @@ public class SocketClient implements RpcClient {
             ObjectInputStream objectInputStream = new ObjectInputStream(socket.getInputStream());
             ObjectWriter.writeObject(objectOutputStream, rpcRequest, new KryoSerializer());
             RpcResponse rpcResponse = (RpcResponse) ObjectReader.readObject(objectInputStream);
-            RpcMessageChecker.check(rpcRequest,rpcResponse);
+            RpcMessageChecker.check(rpcRequest, rpcResponse);
             return rpcResponse.getData();
         } catch (IOException e) {
             logger.error("调用时有错误发生：" + e);
             throw new RpcException("服务调用失败：", e);
         }
+    }
+
+    @Override
+    public void setSerializer(CommonSerializer serializer) {
+        this.serializer = serializer;
     }
 }

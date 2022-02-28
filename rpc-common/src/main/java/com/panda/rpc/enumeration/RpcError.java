@@ -12,13 +12,15 @@ import lombok.Getter;
 @Getter
 public enum RpcError {
 
+    CLIENT_CONNECT_SERVER_FAILURE("客户端连接服务端失败"),
     SERVICE_INVOCATION_FAILURE("服务调用出现失败"),
     SERVICE_NOT_FOUND("找不到对应的服务"),
     SERVICE_NOT_IMPLEMENT_ANY_INTERFACE("注册的服务未实现接口"),
     MAGIC_NUMBER_ERROR("不识别的协议包"),
     PACKAGE_TYPE_ERROR("不识别的包类型码"),
     SERIALIZER_TYPE_ERROT("不识别的序列化器码"),
-    RESPONSE_NOT_MATCH("不匹配的回应码");
+    RESPONSE_NOT_MATCH("不匹配的回应码"),
+    SERIALIZER_NOT_FOUND("未知序列化器");
 
 
     private final String message;
