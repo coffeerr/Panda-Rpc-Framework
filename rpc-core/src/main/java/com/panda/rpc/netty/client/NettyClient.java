@@ -8,6 +8,7 @@ import com.panda.rpc.entity.RpcResponse;
 import com.panda.rpc.serializer.HessianSerializer;
 import com.panda.rpc.serializer.JsonSerializer;
 import com.panda.rpc.serializer.KryoSerializer;
+import com.panda.rpc.util.RpcMessageChecker;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -71,6 +72,7 @@ public class NettyClient implements RpcClient {
             }
             AttributeKey<RpcResponse> key = AttributeKey.valueOf("rpcResponse");
             RpcResponse rpcResponse = sync.channel().attr(key).get();
+            RpcMessageChecker.check(rpcRequest,rpcResponse);
             return rpcResponse.getData();
         } catch (InterruptedException e) {
             e.printStackTrace();

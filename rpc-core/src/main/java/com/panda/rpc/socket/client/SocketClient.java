@@ -9,6 +9,7 @@ import com.panda.rpc.exception.RpcException;
 import com.panda.rpc.serializer.KryoSerializer;
 import com.panda.rpc.socket.ObjectReader;
 import com.panda.rpc.socket.ObjectWriter;
+import com.panda.rpc.util.RpcMessageChecker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,15 +46,7 @@ public class SocketClient implements RpcClient {
             ObjectInputStream objectInputStream = new ObjectInputStream(socket.getInputStream());
             ObjectWriter.writeObject(objectOutputStream, rpcRequest, new KryoSerializer());
             RpcResponse rpcResponse = (RpcResponse) ObjectReader.readObject(objectInputStream);
-
-            if (rpcResponse == null) {
-                logger.error("服务调用失败，service:{}" + rpcRequest.getInterfaceName());
-                throw new RpcException(RpcError.SERVICE_INVOCATION_FAILURE, "service:" + rpcRequest.getInterfaceName());
-            }
-            if (rpcResponse.getStatusCode() == null || rpcResponse.getStatusCode() != ResponseCode.SUCCESS.getCode()) {
-                logger.error("服务调用失败，service:{} response:{}", rpcRequest.getInterfaceName(), rpcResponse);
-                throw new RpcException(RpcError.SERVICE_INVOCATION_FAILURE, "service:" + rpcRequest.getInterfaceName());
-            }
+            RpcMessageChecker.check(rpcRequest,rpcResponse);
             return rpcResponse.getData();
         } catch (IOException e) {
             logger.error("调用时有错误发生：" + e);

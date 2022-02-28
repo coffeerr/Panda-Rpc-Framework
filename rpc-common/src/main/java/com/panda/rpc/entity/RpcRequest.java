@@ -32,4 +32,6 @@ public class RpcRequest implements Serializable {
      * 待调用方法的参数类型
      */
     private Class<?>[] paramTypes;
+
+    private String requestId;
 }
