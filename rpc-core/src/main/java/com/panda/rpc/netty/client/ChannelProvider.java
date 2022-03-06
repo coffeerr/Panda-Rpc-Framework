@@ -37,37 +37,32 @@ public class ChannelProvider {
     private static Channel channel = null;
 
     private static Bootstrap initializeBootstrap() {
-        eventLoopGroup = new NioEventLoopGroup();
+        NioEventLoopGroup eventExecutors = new NioEventLoopGroup();
         Bootstrap bootstrap = new Bootstrap();
-        bootstrap.group(eventLoopGroup)
+
+        bootstrap.group(eventExecutors)
                 .channel(NioSocketChannel.class)
-                //连接的超时时间，超过这个时间还是建立不上的话则代表连接失败
-                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 5000)
-                //启用该功能时，TCP会主动探测空闲连接的有效性。可以将此功能视为TCP的心跳机制，默认的心跳间隔是7200s即2小时。
                 .option(ChannelOption.SO_KEEPALIVE, true)
-                //配置Channel参数，nodelay没有延迟，true就代表禁用Nagle算法，减小传输延迟。
-                //理解可参考：https://blog.csdn.net/lclwjl/article/details/80154565
-                .option(ChannelOption.TCP_NODELAY, true);
+                .option(ChannelOption.TCP_NODELAY, true)
+                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 5000);
         return bootstrap;
     }
 
-    public static Channel get(InetSocketAddress inetSocketAddress, CommonSerializer serializer){
+    public static Channel get(InetSocketAddress inetSocketAddress, CommonSerializer serializer) {
         bootstrap.handler(new ChannelInitializer<SocketChannel>() {
             @Override
-            protected void initChannel(SocketChannel ch){
+            protected void initChannel(SocketChannel ch) throws Exception {
                 ch.pipeline().addLast(new CommonEncoder(serializer))
                         .addLast(new CommonDecoder())
                         .addLast(new NettyClientHandler());
             }
         });
-        //设置计数器值为1
         CountDownLatch countDownLatch = new CountDownLatch(1);
-        try{
+        try {
             connect(bootstrap, inetSocketAddress, countDownLatch);
-            //阻塞当前线程直到计时器的值为0
             countDownLatch.await();
-        }catch (InterruptedException e){
-            logger.error("获取Channel时有错误发生", e);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
         }
         return channel;
     }
@@ -77,34 +72,30 @@ public class ChannelProvider {
     }
 
     /**
-     * @description Netty客户端创建通道连接,实现连接失败重试机制
      * @param bootstrap, inetSocketAddress, retry, countDownLatch
      * @return [void]
+     * @description Netty客户端创建通道连接, 实现连接失败重试机制
      * @date [2021-03-11 14:19]
      */
     private static void connect(Bootstrap bootstrap, InetSocketAddress inetSocketAddress, int retry, CountDownLatch countDownLatch) {
         bootstrap.connect(inetSocketAddress).addListener((ChannelFutureListener) future -> {
             if (future.isSuccess()) {
-                logger.info("客户端连接成功！");
+                logger.error("客户端连接成功");
                 channel = future.channel();
-                //计数器减一
                 countDownLatch.countDown();
                 return;
             }
             if (retry == 0) {
-                logger.error("客户端连接失败：重试次数已用完，放弃连接！");
-                countDownLatch.countDown();
+                logger.error("客户端连接次数用尽，连接失败");
                 throw new RpcException(RpcError.CLIENT_CONNECT_SERVER_FAILURE);
             }
-            //第几次重连
-            int order = (MAX_RETRY_COUNT - retry) + 1;
-            //重连的时间间隔，相当于1乘以2的order次方
+
+            int order = MAX_RETRY_COUNT - retry + 1;
             int delay = 1 << order;
             logger.error("{}:连接失败，第{}次重连……", new Date(), order);
-            //利用schedule()在给定的延迟时间后执行connect()重连
-            bootstrap.config().group().schedule(() -> connect(bootstrap, inetSocketAddress, retry - 1, countDownLatch), delay,
-                    TimeUnit.SECONDS);
+            bootstrap.config().group().schedule(() -> connect(bootstrap, inetSocketAddress, retry - 1, countDownLatch), delay, TimeUnit.SECONDS);
         });
+
     }
 
 }

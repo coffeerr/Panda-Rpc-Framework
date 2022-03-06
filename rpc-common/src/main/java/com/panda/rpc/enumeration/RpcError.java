@@ -20,7 +20,9 @@ public enum RpcError {
     PACKAGE_TYPE_ERROR("不识别的包类型码"),
     SERIALIZER_TYPE_ERROT("不识别的序列化器码"),
     RESPONSE_NOT_MATCH("不匹配的回应码"),
-    SERIALIZER_NOT_FOUND("未知序列化器");
+    SERIALIZER_NOT_FOUND("未知序列化器"),
+    FAILED_TO_CONNECT_TO_SERVICE_REGISTRY("连接Nacos有错误发生"),
+    REGISTER_SERVICE_FAILED("注册服务时有错误发生");
 
 
     private final String message;
