@@ -1,10 +1,16 @@
 package com.panda.rpc.netty.server;
 
+import com.alibaba.nacos.api.naming.NamingService;
+import com.alibaba.nacos.client.naming.NacosNamingService;
 import com.panda.rpc.RpcServer;
 import com.panda.rpc.codec.CommonDecoder;
 import com.panda.rpc.codec.CommonEncoder;
 import com.panda.rpc.enumeration.RpcError;
 import com.panda.rpc.exception.RpcException;
+import com.panda.rpc.provider.ServiceProvider;
+import com.panda.rpc.provider.ServiceProviderImpl;
+import com.panda.rpc.register.NacosServiceRegistry;
+import com.panda.rpc.register.ServiceRegistry;
 import com.panda.rpc.serializer.CommonSerializer;
 import com.panda.rpc.serializer.HessianSerializer;
 import io.netty.bootstrap.ServerBootstrap;
@@ -17,6 +23,8 @@ import io.netty.handler.logging.LoggingHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.InetSocketAddress;
+
 /**
  * @author [PANDA] 1843047930@qq.com
  * @date [2021-02-21 14:04]
@@ -28,8 +36,21 @@ public class NettyServer implements RpcServer {
 
     private CommonSerializer serializer;
 
+    private String host;
+    private int port;
+    private ServiceProvider serviceProvider;
+    private ServiceRegistry serviceRegistry;
+
+    public NettyServer(String host, int port) {
+        this.host = host;
+        this.port = port;
+        serviceProvider = new ServiceProviderImpl();
+        serviceRegistry = new NacosServiceRegistry();
+
+    }
+
     @Override
-    public void start(int port) {
+    public void start() {
         if (serializer == null) {
             logger.error("未设置序列化器");
             throw new RpcException(RpcError.SERIALIZER_NOT_FOUND);
@@ -38,7 +59,7 @@ public class NettyServer implements RpcServer {
         EventLoopGroup bossGroup = new NioEventLoopGroup();
         //用于连接后处理IO事件的从”线程池“
         EventLoopGroup workerGroup = new NioEventLoopGroup();
-        try{
+        try {
             //初始化Netty服务端启动器，作为服务端入口
             ServerBootstrap serverBootstrap = new ServerBootstrap();
             //将主从“线程池”初始化到启动器中
@@ -70,9 +91,9 @@ public class NettyServer implements RpcServer {
             ChannelFuture future = serverBootstrap.bind(port).sync();
             //等确定通道关闭了，关闭future回到主Server线程
             future.channel().closeFuture().sync();
-        }catch (InterruptedException e){
+        } catch (InterruptedException e) {
             logger.error("启动服务器时有错误发生", e);
-        }finally {
+        } finally {
             //优雅关闭Netty服务端且清理掉内存，shutdownGracefully()执行逻辑参考：https://www.icode9.com/content-4-797057.html
             bossGroup.shutdownGracefully();
             workerGroup.shutdownGracefully();
@@ -82,5 +103,15 @@ public class NettyServer implements RpcServer {
     @Override
     public void setSerializer(CommonSerializer serializer) {
         this.serializer = serializer;
+    }
+
+    @Override
+    public <T> void publishService(Object service, Class<T> clazz) {
+        if (serializer == null) {
+            logger.error("未设置序列化器");
+        }
+        serviceProvider.addServiceProvider(service);
+        serviceRegistry.register(clazz.getCanonicalName(), new InetSocketAddress(host, port));
+        start();
     }
 }

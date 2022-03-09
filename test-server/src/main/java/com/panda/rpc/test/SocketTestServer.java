@@ -17,8 +17,8 @@ public class SocketTestServer {
         HelloService helloService = new HelloServiceImpl();
         ServiceRegistry serviceRegistry = new DefaultServiceRegistry();
         serviceRegistry.register(helloService);
-        SocketServer socketServer = new SocketServer(serviceRegistry);
+        SocketServer socketServer = new SocketServer(serviceRegistry, 9999);
         socketServer.setSerializer(new HessianSerializer());
-        socketServer.start(9999);
+        socketServer.start();
     }
 }

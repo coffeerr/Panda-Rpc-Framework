@@ -5,6 +5,8 @@ import com.panda.rpc.entity.RpcRequest;
 import com.panda.rpc.entity.RpcResponse;
 import com.panda.rpc.enumeration.RpcError;
 import com.panda.rpc.exception.RpcException;
+import com.panda.rpc.register.NacosServiceRegistry;
+import com.panda.rpc.register.ServiceRegistry;
 import com.panda.rpc.serializer.CommonSerializer;
 import com.panda.rpc.util.RpcMessageChecker;
 import io.netty.channel.Channel;
@@ -26,12 +28,10 @@ public class NettyClient implements RpcClient {
 
     private CommonSerializer serializer;
 
-    private String host;
-    private int port;
+    private ServiceRegistry serviceRegistry;
 
-    public NettyClient(String host, int port){
-        this.host = host;
-        this.port = port;
+    public NettyClient() {
+        serviceRegistry = new NacosServiceRegistry();
     }
 
     @Override
@@ -43,13 +43,14 @@ public class NettyClient implements RpcClient {
         //保证自定义实体类变量的原子性和共享性的线程安全，此处应用于rpcResponse
         AtomicReference<Object> result = new AtomicReference<>(null);
         try {
-            Channel channel = ChannelProvider.get(new InetSocketAddress(host, port), serializer);
-            if(channel.isActive()) {
+            InetSocketAddress inetSocketAddress = serviceRegistry.lookUpService(rpcRequest.getInterfaceName());
+            Channel channel = ChannelProvider.get(inetSocketAddress, serializer);
+            if (channel.isActive()) {
                 //向服务端发请求，并设置监听，关于writeAndFlush()的具体实现可以参考：https://blog.csdn.net/qq_34436819/article/details/103937188
                 channel.writeAndFlush(rpcRequest).addListener(future1 -> {
-                    if(future1.isSuccess()){
+                    if (future1.isSuccess()) {
                         logger.info(String.format("客户端发送消息：%s", rpcRequest.toString()));
-                    }else {
+                    } else {
                         logger.error("发送消息时有错误发生:", future1.cause());
                     }
                 });

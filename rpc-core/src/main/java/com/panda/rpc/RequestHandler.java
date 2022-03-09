@@ -3,6 +3,8 @@ package com.panda.rpc;
 import com.panda.rpc.entity.RpcRequest;
 import com.panda.rpc.entity.RpcResponse;
 import com.panda.rpc.enumeration.ResponseCode;
+import com.panda.rpc.provider.ServiceProvider;
+import com.panda.rpc.provider.ServiceProviderImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -14,16 +16,23 @@ import java.lang.reflect.Method;
  * @date [2021-02-05 12:13]
  * @description 实际执行方法调用的处理器
  */
-public class RequestHandler{
+public class RequestHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(RequestHandler.class);
+    private static final ServiceProvider serviceProvider;
 
-    public Object handle(RpcRequest rpcRequest, Object service){
+    static {
+        serviceProvider = new ServiceProviderImpl();
+    }
+
+    public Object handle(RpcRequest rpcRequest) {
         Object result = null;
-        try{
+        //从服务端本地注册表中获取服务实体
+        Object service = serviceProvider.getServiceProvider(rpcRequest.getInterfaceName());
+        try {
             result = invokeTargetMethod(rpcRequest, service);
             logger.info("服务：{}成功调用方法：{}", rpcRequest.getInterfaceName(), rpcRequest.getMethodName());
-        }catch (IllegalAccessException | InvocationTargetException e){
+        } catch (IllegalAccessException | InvocationTargetException e) {
             logger.info("调用或发送时有错误发生：" + e);
         }
         return RpcResponse.success(result, rpcRequest.getRequestId());

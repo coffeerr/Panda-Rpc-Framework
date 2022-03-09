@@ -28,41 +28,50 @@ public class SocketServer implements RpcServer {
     private final ServiceRegistry serviceRegistry;
     private CommonSerializer serializer;
     private RequestHandler requestHandler = new RequestHandler();
+    private int port;
 
-    public SocketServer(ServiceRegistry serviceRegistry){
+
+    public SocketServer(ServiceRegistry serviceRegistry, int port) {
+        this.port = port;
         this.serviceRegistry = serviceRegistry;
         //创建线程池
         threadPool = ThreadPoolFactory.createDefaultThreadPool("socket-rpc-server");
     }
 
     /**
-     * @description 服务端启动
      * @param [port]
      * @return [void]
+     * @description 服务端启动
      * @date [2021-02-05 11:57]
      */
     @Override
-    public void start(int port){
-        if (serializer == null){
+    public void start() {
+        if (serializer == null) {
             logger.error("未设置序列化器");
             throw new RpcException(RpcError.SERIALIZER_NOT_FOUND);
         }
-        try(ServerSocket serverSocket = new ServerSocket(port)){
+        try (ServerSocket serverSocket = new ServerSocket(port)) {
             logger.info("服务器启动……");
             Socket socket;
             //当未接收到连接请求时，accept()会一直阻塞
-            while ((socket = serverSocket.accept()) != null){
+            while ((socket = serverSocket.accept()) != null) {
                 logger.info("客户端连接！{}:{}", socket.getInetAddress(), socket.getPort());
                 threadPool.execute(new RequestHandlerThread(socket, requestHandler, serviceRegistry, serializer));
             }
             threadPool.shutdown();
-        }catch (IOException e){
+        } catch (IOException e) {
             logger.info("服务器启动时有错误发生：" + e);
         }
     }
 
+
     @Override
     public void setSerializer(CommonSerializer serializer) {
         this.serializer = serializer;
+    }
+
+    @Override
+    public <T> void publishService(Object service, Class<T> clazz) {
+
     }
 }
