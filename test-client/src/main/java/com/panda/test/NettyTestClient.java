@@ -2,6 +2,7 @@ package com.panda.test;
 
 import com.panda.rpc.api.HelloObject;
 import com.panda.rpc.api.HelloService;
+import com.panda.rpc.loadbalancer.RounRobinLoadBalancer;
 import com.panda.rpc.serializer.CommonSerializer;
 import com.panda.rpc.transport.RpcClient;
 import com.panda.rpc.transport.RpcClientProxy;
@@ -14,7 +15,7 @@ import com.panda.rpc.transport.netty.client.NettyClient;
  */
 public class NettyTestClient {
     public static void main(String[] args) {
-        RpcClient client = new NettyClient(CommonSerializer.PROTOBUF_SERIALIZER);
+        RpcClient client = new NettyClient(CommonSerializer.PROTOBUF_SERIALIZER, new RounRobinLoadBalancer());
         RpcClientProxy rpcClientProxy = new RpcClientProxy(client);
         HelloService helloService = rpcClientProxy.getProxy(HelloService.class);
         HelloObject object = new HelloObject(12, "this is netty style");
