@@ -7,6 +7,8 @@ import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
+import io.netty.handler.timeout.IdleState;
+import io.netty.handler.timeout.IdleStateEvent;
 import io.netty.util.ReferenceCountUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,7 +27,7 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<RpcRequest> 
     private final ExecutorService threadPool;
     private final RequestHandler requestHandler;
 
-    public NettyServerHandler(){
+    public NettyServerHandler() {
         requestHandler = new RequestHandler();
         //引入异步业务线程池，避免长时间的耗时业务阻塞netty本身的worker工作线程，耽误了同一个Selector中其他任务的执行
         threadPool = ThreadPoolFactory.createDefaultThreadPool(THREAD_NAME_PREFIX);
@@ -34,14 +36,14 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<RpcRequest> 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, RpcRequest msg) throws Exception {
         threadPool.execute(() -> {
-            try{
+            try {
                 logger.info("服务端接收到请求：{}", msg);
                 Object response = requestHandler.handle(msg);
                 //注意这里的通道是workGroup中的，而NettyServer中创建的是bossGroup的，不要混淆
                 ChannelFuture future = ctx.writeAndFlush(response);
                 //当操作失败或者被取消了就关闭通道
                 future.addListener(ChannelFutureListener.CLOSE_ON_FAILURE);
-            }finally {
+            } finally {
                 ReferenceCountUtil.release(msg);
             }
         });
@@ -52,5 +54,18 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<RpcRequest> 
         logger.error("处理过程调用时有错误发生：");
         cause.printStackTrace();
         ctx.close();
+    }
+
+    @Override
+    public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
+        if (ctx instanceof IdleStateEvent) {
+            IdleState state = ((IdleStateEvent) ctx).state();
+            if (state == IdleState.READER_IDLE) {
+                logger.info("长时间未收到心跳包，请求结束");
+                ctx.close();
+            }
+        } else {
+            super.userEventTriggered(ctx, evt);
+        }
     }
 }

@@ -24,21 +24,23 @@ public class RpcResponse<T> implements Serializable {
      */
     private Integer statusCode;
     /**
-     *响应状态码对应的信息
+     * 响应状态码对应的信息
      */
     private String message;
     /**
-     *成功时的响应数据
+     * 成功时的响应数据
      */
     private T data;
 
+    private boolean heartBeat;
+
     /**
-     * @description 成功时服务端返回的对象
      * @param [data]
      * @return [com.panda.rpc.entity.RpcResponse<T>]
+     * @description 成功时服务端返回的对象
      * @date [2021-02-03 17:31]
      */
-    public static <T> RpcResponse<T> success(T data, String requestId){
+    public static <T> RpcResponse<T> success(T data, String requestId) {
         RpcResponse<T> response = new RpcResponse<>();
         response.setRequestId(requestId);
         response.setStatusCode(ResponseCode.SUCCESS.getCode());

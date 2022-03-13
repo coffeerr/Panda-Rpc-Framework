@@ -1,12 +1,20 @@
 package com.panda.rpc.transport.netty.client;
 
+import com.panda.rpc.entity.RpcRequest;
 import com.panda.rpc.entity.RpcResponse;
+import com.panda.rpc.serializer.CommonSerializer;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
+import io.netty.handler.timeout.IdleState;
+import io.netty.handler.timeout.IdleStateEvent;
 import io.netty.util.AttributeKey;
 import io.netty.util.ReferenceCountUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.net.InetSocketAddress;
 
 /**
  * @author [PANDA] 1843047930@qq.com
@@ -20,6 +28,10 @@ public class NettyClientHandler extends SimpleChannelInboundHandler<RpcResponse>
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, RpcResponse msg) throws Exception {
         try {
+            if (msg.isHeartBeat()) {
+                logger.info("接收到客户端心跳包……");
+                return;
+            }
             logger.info(String.format("客户端接收到消息：%s", msg));
             AttributeKey<RpcResponse> key = AttributeKey.valueOf("rpcResponse" + msg.getRequestId());
             ctx.channel().attr(key).set(msg);
@@ -35,5 +47,22 @@ public class NettyClientHandler extends SimpleChannelInboundHandler<RpcResponse>
         logger.error("过程调用中有错误发生：");
         cause.printStackTrace();
         ctx.close();
+    }
+
+    @Override
+    public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
+        if (evt instanceof IdleStateEvent) {
+            IdleState state = ((IdleStateEvent) evt).state();
+            if (state == IdleState.WRITER_IDLE) {
+                logger.info("发送心跳包 {}", ctx.channel().remoteAddress());
+                Channel channel = ChannelProvider.get((InetSocketAddress) ctx.channel().remoteAddress(),
+                        CommonSerializer.getByCode(CommonSerializer.PROTOBUF_SERIALIZER));
+                RpcRequest rpcRequest = new RpcRequest();
+                rpcRequest.setHeartBeat(true);
+                channel.writeAndFlush(rpcRequest).addListener(ChannelFutureListener.CLOSE_ON_FAILURE);
+            }
+        } else {
+            super.userEventTriggered(ctx, evt);
+        }
     }
 }
